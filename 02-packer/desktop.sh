@@ -7,7 +7,7 @@ set -euo pipefail
 # Description:
 #   Creates trusted symlinks for selected applications inside /etc/skel/Desktop.
 #   These symlinks ensure that all newly created users receive desktop icons
-#   without the XFCE "untrusted application launcher" warning dialog.
+#   without the MATE "untrusted application launcher" warning dialog.
 #
 # Notes:
 #   - Works for XFCE, MATE, and most desktop environments using .desktop files.
@@ -23,6 +23,7 @@ APPS=(
   /usr/share/applications/firefox.desktop
   /usr/share/applications/code.desktop
   /usr/share/applications/postman.desktop
+  /usr/share/applications/mate-terminal.desktop
   /usr/share/applications/onlyoffice-desktopeditors.desktop
 )
 
@@ -51,42 +52,7 @@ done
 
 echo "NOTE: All new users will receive these desktop icons without trust prompts."
 
-# ================================================================================================
-# XFCE Screensaver Default (NEW USERS ONLY)
-# -----------------------------------------------------------------------------------------------
-# - Writes xfce4-screensaver.xml into /etc/skel so only NEW accounts inherit it.
-# - Does NOT modify any existing user home directories.
-# - Sets idle timeout (delay) to 60 minutes.
-# ================================================================================================
+rm -f -r /etc/xdg/autostart/mate-power-manager.desktop
 
-SKEL_DIR="/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml"
-SKEL_FILE="${SKEL_DIR}/xfce4-screensaver.xml"
-
-# Create the skeleton config directory
-sudo mkdir -p "${SKEL_DIR}"
-
-# Create the 60-minute default screensaver config
-sudo tee "${SKEL_FILE}" >/dev/null <<'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-
-<channel name="xfce4-screensaver" version="1.0">
-  <property name="saver" type="empty">
-    <property name="mode" type="int" value="2"/>
-    <property name="idle-activation" type="empty">
-      <property name="delay" type="int" value="60"/>
-    </property>
-    <property name="themes" type="empty">
-      <property name="list" type="array">
-        <value type="string" value="screensavers-xfce-floaters"/>
-      </property>
-    </property>
-  </property>
-</channel>
-EOF
-
-echo "NOTE: Default XFCE screensaver timeout set to 60 minutes for NEW users."
-
-systemctl enable xrdp
-systemctl enable ssh
-
-echo "NOTE: XRDP and SSH services enabled to start on boot."
+sudo sed -i 's/enabled=1/enabled=0/' /etc/default/apport
+sudo systemctl disable --now apport.service
