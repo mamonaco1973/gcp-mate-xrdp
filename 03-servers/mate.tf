@@ -1,43 +1,42 @@
-# ================================================================================================
-# Random String, Firewall (SSH), and Ubuntu VM for AD/NFS Gateway
-# ================================================================================================
+# ==============================================================================
+# Random Suffix, Firewall Rules, and MATE Desktop VM
+# ------------------------------------------------------------------------------
 # Provisions:
-#   1. Random string suffix for uniqueness across resource names.
-#   2. Firewall rule allowing inbound SSH (port 22) to tagged VMs.
-#   3. Ubuntu 24.04 Compute Engine VM configured as an NFS gateway and AD join client.
-#   4. Data source for the latest Ubuntu 24.04 LTS image.
+#   1. Random suffix for globally unique resource naming.
+#   2. Firewall rules for SSH and SMB access (lab scope).
+#   3. Ubuntu 24.04 MATE VM acting as AD-joined NFS gateway client.
+#   4. Ubuntu image lookup for latest 24.04 LTS reference.
 #
-# Key Points:
-#   - Random suffix prevents name collisions when deploying multiple environments.
-#   - SSH rule is wide open (0.0.0.0/0) — ⚠️ insecure for production.
-#   - VM auto-runs a startup script to join AD and mount NFS from Filestore.
-#   - Uses service account for GCP API access.
-# ================================================================================================
+# Notes:
+#   - SSH/SMB rules are open to 0.0.0.0/0 (lab only).
+#   - VM boots from custom Packer-built MATE image.
+#   - Startup script handles AD join and NFS mount.
+# ==============================================================================
 
 
-# ================================================================================================
+# ==============================================================================
 # Random String Generator
-# ================================================================================================
-# Generates a 6-character lowercase suffix to ensure resource name uniqueness.
-# ================================================================================================
+# ------------------------------------------------------------------------------
+# Generates a lowercase alphanumeric suffix for unique VM naming.
+# Prevents collisions across repeated or parallel deployments.
+# ==============================================================================
+
 resource "random_string" "vm_suffix" {
-  length  = 10    # Number of characters in the generated string
-  special = false # Excludes special characters (DNS-friendly)
-  upper   = false # Lowercase only for consistency
+  length  = 10    # Length of generated suffix
+  special = false # Exclude special characters
+  upper   = false # Lowercase only
 }
 
 
-# ================================================================================================
+# ==============================================================================
 # Firewall Rule: Allow SSH
-# ================================================================================================
-# Opens TCP port 22 for SSH access to VMs tagged with "allow-ssh".
-#
-# Key Points:
-#   - Applies only to instances with "allow-ssh" tag.
-#   - Source range is open to the internet (0.0.0.0/0) — ⚠️ restrict in production.
-# ================================================================================================
+# ------------------------------------------------------------------------------
+# Allows inbound TCP/22 to instances tagged with "allow-ssh".
+# Source range is open to the internet (restrict in production).
+# ==============================================================================
+
 resource "google_compute_firewall" "allow_ssh" {
-  name    = "allow-ssh"
+  name    = "mate-allow-ssh"
   network = "ad-vpc"
 
   allow {
@@ -45,24 +44,20 @@ resource "google_compute_firewall" "allow_ssh" {
     ports    = ["22"]
   }
 
-  # Tag-based targeting (applies only to instances with this tag)
-  target_tags = ["allow-ssh"]
-
-  # ⚠️ Lab only; tighten for production
+  target_tags   = ["mate-allow-ssh"]
   source_ranges = ["0.0.0.0/0"]
 }
 
-# ================================================================================================
-# Firewall Rule: Allow SMB (Windows File Sharing)
-# ================================================================================================
-# Opens TCP port 445 for SMB access to VMs tagged with "allow-smb".
-#
-# Key Points:
-#   - Applies only to instances with "allow-smb" tag.
-#   - Source range is open to the internet (0.0.0.0/0) — ⚠️ restrict in production.
-# ================================================================================================
+
+# ==============================================================================
+# Firewall Rule: Allow SMB
+# ------------------------------------------------------------------------------
+# Allows inbound TCP/445 to instances tagged with "allow-smb".
+# Intended for Windows file sharing access (lab scope only).
+# ==============================================================================
+
 resource "google_compute_firewall" "allow_smb" {
-  name    = "allow-smb"
+  name    = "mate-allow-smb"
   network = "ad-vpc"
 
   allow {
@@ -70,92 +65,82 @@ resource "google_compute_firewall" "allow_smb" {
     ports    = ["445"]
   }
 
-  # Tag-based targeting (applies only to instances with this tag)
-  target_tags = ["allow-smb"]
-
-  # ⚠️ Lab only; tighten for production
+  target_tags   = ["mate-allow-smb"]
   source_ranges = ["0.0.0.0/0"]
 }
 
 
-# ================================================================================================
-# MATE VM: NFS Gateway + AD-Joined Desktop Client
-# ================================================================================================
+# ==============================================================================
+# MATE VM: AD-Joined Desktop + NFS Gateway Client
+# ------------------------------------------------------------------------------
 # Deploys a MATE 24.04 VM that:
-#   - Connects to the "ad-vpc" network and "ad-subnet".
-#   - Boots from a custom Packer-built MATE image.
-#   - Runs a startup script to join the Active Directory domain and mount NFS
-#     storage from Filestore for user home directories.
-#   - Uses OS Login for secure SSH access.
-#
-# Key Points:
-#   - Startup script injects AD domain FQDN and Filestore IP at boot.
-#   - Service account grants required GCP API access.
-# ================================================================================================
+#   - Attaches to ad-vpc and ad-subnet.
+#   - Boots from a Packer-built custom image.
+#   - Executes startup script to join AD and mount NFS storage.
+#   - Uses OS Login and a service account for secure access.
+# ==============================================================================
 
 resource "google_compute_instance" "desktop_instance" {
   name         = "mate-${random_string.vm_suffix.result}"
-  machine_type = "n2-standard-4" 
+  machine_type = "n2-standard-4"
   zone         = "us-central1-a"
 
-  # ----------------------------------------------------------------------------------------------
+  # ----------------------------------------------------------------------------
   # Boot Disk
-  # ----------------------------------------------------------------------------------------------
+  # ----------------------------------------------------------------------------
   boot_disk {
     initialize_params {
       image = data.google_compute_image.mate_packer_image.self_link
     }
   }
 
-  # ----------------------------------------------------------------------------------------------
+  # ----------------------------------------------------------------------------
   # Network Interface
-  # ----------------------------------------------------------------------------------------------
+  # ----------------------------------------------------------------------------
   network_interface {
-    network    = "ad-vpc"
-    subnetwork = "ad-subnet"
+    network    = var.vpc
+    subnetwork = var.subnet
 
-    # Ephemeral public IP (required for SSH access)
     access_config {}
   }
 
-  # ----------------------------------------------------------------------------------------------
-  # Metadata (Startup Script + Config)
-  # ----------------------------------------------------------------------------------------------
+  # ----------------------------------------------------------------------------
+  # Metadata (Startup Script + OS Login)
+  # ----------------------------------------------------------------------------
   metadata = {
-    enable-oslogin = "TRUE" # Enforce OS Login for secure SSH
+    enable-oslogin = "TRUE"
 
     startup-script = templatefile("./scripts/nfs_gateway_init.sh", {
-      domain_fqdn   = "mcloud.mikecloud.com"
-      nfs_server_ip = google_filestore_instance.nfs_server.networks[0].ip_addresses[0]
       domain_fqdn   = var.dns_zone
+      nfs_server_ip = google_filestore_instance.nfs_server.networks[0].ip_addresses[0]
       netbios       = var.netbios
       force_group   = "mcloud-users"
       realm         = var.realm
     })
   }
 
-  # ----------------------------------------------------------------------------------------------
+  # ----------------------------------------------------------------------------
   # Service Account
-  # ----------------------------------------------------------------------------------------------
+  # ----------------------------------------------------------------------------
   service_account {
     email  = local.service_account_email
     scopes = ["https://www.googleapis.com/auth/cloud-platform"]
   }
 
-  # ----------------------------------------------------------------------------------------------
+  # ----------------------------------------------------------------------------
   # Firewall Tags
-  # ----------------------------------------------------------------------------------------------
-  # Applies both SSH and NFS firewall rules
-  tags = ["allow-ssh", "allow-nfs", "allow-smb","allow-rdp"]
+  # ----------------------------------------------------------------------------
+  tags = ["mate-allow-ssh", "mate-allow-nfs", "mate-allow-smb", "mate-allow-rdp"]
 }
 
 
-# ================================================================================================
+# ==============================================================================
 # Data Source: Latest Ubuntu 24.04 LTS Image
-# ================================================================================================
-# Dynamically fetches the most recent Ubuntu 24.04 LTS image.
-# Ensures VMs always launch with a patched image.
-# ================================================================================================
+# ------------------------------------------------------------------------------
+# Retrieves the most recent Ubuntu 24.04 LTS image from ubuntu-os-cloud.
+# Useful for validation or alternate boot scenarios.
+# ==============================================================================
+
 data "google_compute_image" "ubuntu_latest" {
   family  = "ubuntu-2404-lts-amd64"
   project = "ubuntu-os-cloud"

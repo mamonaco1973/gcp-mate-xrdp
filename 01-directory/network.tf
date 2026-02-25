@@ -1,81 +1,74 @@
-# ================================================================================================
-# Custom VPC, Subnet, Router, and NAT for Active Directory Environment
-# ================================================================================================
+# ==============================================================================
+# Custom VPC, Subnet, Router, and NAT for AD Environment
+# ------------------------------------------------------------------------------
 # Provisions:
-#   1. Custom-mode VPC (no default subnets).
-#   2. Explicit subnet for AD resources.
-#   3. Cloud Router to manage dynamic routing.
+#   1. Custom-mode VPC (no automatic subnets).
+#   2. Dedicated subnet for AD resources.
+#   3. Cloud Router for routing and NAT support.
 #   4. Cloud NAT for outbound internet without public IPs.
 #
-# Key Points:
-#   - Custom VPC avoids auto-created subnets (better control).
-#   - Subnet explicitly defined in `us-central1` with CIDR block 10.1.0.0/24.
-#   - Cloud Router enables advanced networking features (e.g., NAT, BGP).
-#   - Cloud NAT provides secure outbound access for private VMs.
-# ================================================================================================
+# Design Notes:
+#   - Custom VPC prevents implicit subnet creation.
+#   - Subnet defined in us-central1 with CIDR 10.1.0.0/24.
+#   - Router is required for Cloud NAT operation.
+#   - NAT enables secure egress for private instances.
+# ==============================================================================
 
 
-# ================================================================================================
+# ==============================================================================
 # VPC Network: Active Directory VPC
-# ================================================================================================
-# Creates a custom-mode VPC named `ad-vpc`.
-#
-# Key Points:
-#   - Auto subnet creation disabled.
-#   - All subnets must be manually defined.
-# ================================================================================================
+# ------------------------------------------------------------------------------
+# Creates a custom VPC.
+# auto_create_subnetworks=false enforces explicit subnet control.
+# ==============================================================================
+
 resource "google_compute_network" "ad_vpc" {
-  name                    = "ad-vpc"
+  name                    = var.vpc
   auto_create_subnetworks = false
 }
 
 
-# ================================================================================================
+# ==============================================================================
 # Subnet: Active Directory Subnet
-# ================================================================================================
-# Defines a subnet inside the `ad-vpc` network for AD resources.
-#
-# Key Points:
-#   - Located in `us-central1` region.
-#   - CIDR: 10.1.0.0/24 (non-overlapping, must be large enough for resources).
-#   - Explicitly tied to the VPC above.
-# ================================================================================================
+# ------------------------------------------------------------------------------
+# Defines the AD subnet inside the VPC.
+# Region: us-central1.
+# CIDR: 10.1.0.0/24 (must not overlap with other networks).
+# ==============================================================================
+
 resource "google_compute_subnetwork" "ad_subnet" {
-  name          = "ad-subnet"
+  name          = var.subnet
   region        = "us-central1"
   network       = google_compute_network.ad_vpc.id
   ip_cidr_range = "10.1.0.0/24"
 }
 
 
-# ================================================================================================
+# ==============================================================================
 # Cloud Router
-# ================================================================================================
-# Creates a Cloud Router in the AD VPC.
-#
-# Key Points:
-#   - Required for Cloud NAT.
-#   - Handles dynamic route advertisement and BGP if configured.
-# ================================================================================================
+# ------------------------------------------------------------------------------
+# Required for Cloud NAT.
+# Supports dynamic routing and BGP if extended in future.
+# ==============================================================================
+
 resource "google_compute_router" "ad_router" {
-  name    = "ad-router"
+  name    = "mate-ad-router"
   network = google_compute_network.ad_vpc.id
   region  = "us-central1"
 }
 
 
-# ================================================================================================
+# ==============================================================================
 # Cloud NAT
-# ================================================================================================
-# Provides outbound internet access for private resources in the AD subnet.
-#
-# Key Points:
-#   - No need for public IPs on instances.
-#   - NAT IPs are allocated automatically.
-#   - Logs all flows (ALL).
-# ================================================================================================
+# ------------------------------------------------------------------------------
+# Provides outbound internet access for private subnet resources.
+# No public IPs required on instances.
+# NAT IPs allocated automatically.
+# Flow logging enabled with filter set to ALL.
+# ==============================================================================
+
 resource "google_compute_router_nat" "ad_nat" {
-  name   = "ad-nat"
+  name   = "mate-ad-nat"
   router = google_compute_router.ad_router.name
   region = google_compute_router.ad_router.region
 

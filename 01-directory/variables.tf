@@ -1,43 +1,70 @@
-# ==================================================================================================
-# Active Directory naming inputs
-# - dns_zone : FQDN for the AD DNS zone / domain (e.g., mcloud.mikecloud.com)
-# - realm    : Kerberos realm (typically the DNS zone in UPPERCASE)
-# - netbios  : Short (pre-Windows 2000) domain name used by legacy/NetBIOS-aware systems
-# ==================================================================================================
+# ==============================================================================
+# Active Directory Naming and Infrastructure Inputs
+# ------------------------------------------------------------------------------
+# Defines domain naming, LDAP, compute, and networking parameters for the
+# mini Active Directory deployment on Google Cloud.
+#
+# Categories:
+#   - Domain identity (DNS, Kerberos, NetBIOS).
+#   - LDAP placement (user base DN).
+#   - Compute sizing and location.
+#   - Network resource naming.
+# ==============================================================================
 
-# --------------------------------------------------------------------------------
-# DNS zone / AD domain (FQDN)
-# Used by Samba AD DC for DNS namespace and domain identity
-# --------------------------------------------------------------------------------
+
+# ==============================================================================
+# DNS Zone / AD Domain (FQDN)
+# ------------------------------------------------------------------------------
+# Fully qualified domain name for the AD forest root domain.
+# Used by Samba AD DC for DNS namespace and domain identity.
+# Example: mcloud.mikecloud.com
+# ==============================================================================
+
 variable "dns_zone" {
   description = "AD DNS zone / domain (e.g., mcloud.mikecloud.com)"
   type        = string
   default     = "mcloud.mikecloud.com"
 }
 
-# --------------------------------------------------------------------------------
-# Kerberos realm (UPPERCASE)
-# Convention: match dns_zone but uppercase; required by Kerberos config
-# --------------------------------------------------------------------------------
+
+# ==============================================================================
+# Kerberos Realm (UPPERCASE)
+# ------------------------------------------------------------------------------
+# Kerberos realm name, typically the uppercase version of dns_zone.
+# Required for proper Kerberos authentication configuration.
+# Example: MCLOUD.MIKECLOUD.COM
+# ==============================================================================
+
 variable "realm" {
   description = "Kerberos realm (usually DNS zone in UPPERCASE, e.g., MCLOUD.MIKECLOUD.COM)"
   type        = string
   default     = "MCLOUD.MIKECLOUD.COM"
 }
 
-# --------------------------------------------------------------------------------
-# NetBIOS short domain name
-# Typically <= 15 characters, uppercase alphanumerics; used by legacy clients and some SMB flows
-# --------------------------------------------------------------------------------
+
+# ==============================================================================
+# NetBIOS Short Domain Name
+# ------------------------------------------------------------------------------
+# Pre-Windows 2000 short domain name.
+# Typically <= 15 uppercase alphanumeric characters.
+# Used by legacy clients and certain SMB authentication flows.
+# Example: MCLOUD
+# ==============================================================================
+
 variable "netbios" {
   description = "NetBIOS short domain name (e.g., MCLOUD)"
   type        = string
   default     = "MCLOUD"
 }
 
-# --------------------------------------------------------------------------------
-# User base DN for LDAP
-# --------------------------------------------------------------------------------
+
+# ==============================================================================
+# User Base DN for LDAP
+# ------------------------------------------------------------------------------
+# Distinguished Name container where new user objects are created.
+# Must align with the domain components derived from dns_zone.
+# Example: CN=Users,DC=mcloud,DC=mikecloud,DC=com
+# ==============================================================================
 
 variable "user_base_dn" {
   description = "User base DN for LDAP (e.g., CN=Users,DC=mcloud,DC=mikecloud,DC=com)"
@@ -45,9 +72,13 @@ variable "user_base_dn" {
   default     = "CN=Users,DC=mcloud,DC=mikecloud,DC=com"
 }
 
-# --------------------------------------------------------------------------------
-# Zone for deployment
-# --------------------------------------------------------------------------------
+
+# ==============================================================================
+# Deployment Zone
+# ------------------------------------------------------------------------------
+# Google Cloud zone where the mini AD instance will be created.
+# Example: us-central1-a
+# ==============================================================================
 
 variable "zone" {
   description = "GCP zone for deployment (e.g., us-central1-a)"
@@ -55,9 +86,13 @@ variable "zone" {
   default     = "us-central1-a"
 }
 
-# --------------------------------------------------------------------------------
-# Machine type for mini AD instance
-# --------------------------------------------------------------------------------
+
+# ==============================================================================
+# Machine Type for mini AD Instance
+# ------------------------------------------------------------------------------
+# Determines compute resources allocated to the AD VM.
+# Minimum recommended size is e2-small.
+# ==============================================================================
 
 variable "machine_type" {
   description = "Machine type for mini AD instance (minimum is e2-small)"
@@ -65,22 +100,28 @@ variable "machine_type" {
   default     = "e2-medium"
 }
 
-# --------------------------------------------------------------------------------
-# Network for mini AD instance
-# --------------------------------------------------------------------------------
 
-variable "network" {
+# ==============================================================================
+# VPC Name for mini AD Instance
+# ------------------------------------------------------------------------------
+# Name of the VPC network where the AD instance will reside.
+# ==============================================================================
+
+variable "vpc" {
   description = "Network for mini AD instance (e.g., ad-vpc)"
   type        = string
-  default     = "ad-vpc"
+  default     = "mate-vpc"
 }
 
-# --------------------------------------------------------------------------------
-# Sub-network for mini AD instance
-# --------------------------------------------------------------------------------
 
-variable "subnetwork" {
+# ==============================================================================
+# Subnet Name for mini AD Instance
+# ------------------------------------------------------------------------------
+# Name of the subnet within the VPC used for AD placement.
+# ==============================================================================
+
+variable "subnet" {
   description = "Sub-network for mini AD instance (e.g., ad-subnet)"
   type        = string
-  default     = "ad-subnet"
+  default     = "mate-subnet"
 }
