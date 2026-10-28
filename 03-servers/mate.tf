@@ -4,8 +4,8 @@
 # Provisions:
 #   1. Random suffix for globally unique resource naming.
 #   2. Firewall rules for SSH and SMB access (lab scope).
-#   3. Ubuntu 24.04 MATE VM acting as AD-joined NFS gateway client.
-#   4. Ubuntu image lookup for latest 24.04 LTS reference.
+#   3. Ubuntu 26.04 MATE VM acting as AD-joined NFS gateway client.
+#   4. Ubuntu image lookup for latest 26.04 LTS reference.
 #
 # Notes:
 #   - SSH/SMB rules are open to 0.0.0.0/0 (lab only).
@@ -73,7 +73,7 @@ resource "google_compute_firewall" "allow_smb" {
 # ==============================================================================
 # MATE VM: AD-Joined Desktop + NFS Gateway Client
 # ------------------------------------------------------------------------------
-# Deploys a MATE 24.04 VM that:
+# Deploys a MATE 26.04 VM that:
 #   - Attaches to ad-vpc and ad-subnet.
 #   - Boots from a Packer-built custom image.
 #   - Executes startup script to join AD and mount NFS storage.
@@ -135,13 +135,13 @@ resource "google_compute_instance" "desktop_instance" {
 
 
 # ==============================================================================
-# Data Source: Latest Ubuntu 24.04 LTS Image
+# Data Source: Latest Ubuntu 26.04 LTS Image
 # ------------------------------------------------------------------------------
-# Retrieves the most recent Ubuntu 24.04 LTS image from ubuntu-os-cloud.
+# Retrieves the most recent Ubuntu 26.04 LTS image from ubuntu-os-cloud.
 # Useful for validation or alternate boot scenarios.
 # ==============================================================================
 
 data "google_compute_image" "ubuntu_latest" {
-  family  = "ubuntu-2404-lts-amd64"
+  family  = "ubuntu-2604-lts-amd64"
   project = "ubuntu-os-cloud"
 }

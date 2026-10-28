@@ -57,3 +57,19 @@ printf "%-28s %s\n" "NOTE: Windows RDP Host :" "${windows_ip:-<not found>}"
 printf "%-28s %s\n" "NOTE: Mate Host Host   :" "${linux_ip:-<not found>}"
 
 echo ""
+# ------------------------------------------------------------------------------
+# Sign-in
+# ------------------------------------------------------------------------------
+# jsmith is in mcloud-users and linux-admins (sudo on the desktop).
+jsmith_password="$(gcloud secrets versions access latest \
+  --secret="jsmith-ad-credentials-mate" 2>/dev/null | jq -r .password 2>/dev/null || true)"
+
+if [ -z "${jsmith_password}" ]; then
+  printf "%-28s %s\n" "ERROR: Sign in:" "Not found (secret jsmith-ad-credentials-mate)"
+else
+  printf "%-28s %s\n" "NOTE: Sign in:" "jsmith / ${jsmith_password}"
+fi
+printf "%-28s %s\n" "" "Desktop: jsmith. Windows: MCLOUD\\jsmith."
+printf "%-28s %s\n" "" "Other users: <user>-ad-credentials-mate"
+printf "%-28s %s\n" "" "in Secret Manager."
+echo ""
