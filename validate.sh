@@ -53,8 +53,8 @@ echo "MATE Quick Start - Validation Output (GCP)"
 echo "============================================================================"
 echo ""
 
-printf "%-28s %s\n" "NOTE: Windows RDP Host :" "${windows_ip:-<not found>}"
-printf "%-28s %s\n" "NOTE: Mate Host Host   :" "${linux_ip:-<not found>}"
+printf "%-28s %s\n" "NOTE: Windows RDP Host:" "${windows_ip:-<not found>}"
+printf "%-28s %s\n" "NOTE: MATE Host:" "${linux_ip:-<not found>}"
 
 echo ""
 # ------------------------------------------------------------------------------
